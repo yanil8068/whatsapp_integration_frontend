@@ -5,6 +5,10 @@ const Redirecturl = () => {
   const [code, setCode] = useState("");
   const [token, setToken] = useState("");
   const [firstBusinessId, setFirstBusinessId] = useState("");
+  const [whatsappbusinessaccountid, setWhatsappbusinessaccountid] =
+    useState("");
+
+  const [phoneNumberId, setPhoneNumberId] = useState();
   let clientId = process.env.REACT_APP_CLIENT_ID;
   let clientSecret = process.env.REACT_APP_CLIENT_SECRET;
   // console.log("clientid", clientId);
@@ -41,14 +45,12 @@ const Redirecturl = () => {
       }
     );
     console.log("respons of getBuisness", business.data);
-    setFirstBusinessId(business.data.data[0].id);
+    setFirstBusinessId(business.data.data[2].id);
   };
 
   const getwhatsappBuisnessId = async () => {
     const businessNumber = await axios.get(
-      "https://graph.facebook.com/v15.0/" +
-        firstBusinessId +
-        "/owned_whatsapp_business_accounts",
+      `https://graph.facebook.com/v20.0/${firstBusinessId}/owned_whatsapp_business_accounts`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -56,21 +58,49 @@ const Redirecturl = () => {
       }
     );
     console.log("Phone Numbers:", businessNumber.data);
-    // setFirstBusinessNumber(business.data.data[0].id)
+    console.log("Phone Numbers exact:", businessNumber.data.data[0].id);
+    setWhatsappbusinessaccountid(businessNumber.data.data[0].id);
   };
-  //   {
-  //     "error": {
-  //        "message": "(#200) Requires business_management permission to manage the object",
-  //        "type": "OAuthException",
-  //        "code": 200,
-  //        "fbtrace_id": "AiAJYxWG6M64I5v-t5wR47e"
-  //     }
-  //  } in developer account in app review i want business_management permission for this access token
-  // https://developers.facebook.com/docs/marketing-api/reference/business/owned_whatsapp_business_accounts/
 
-  const getPhoneNumberId = () => {};
+  const getPhoneNumberId = async () => {
+    const phoneNumbers = await axios.get(
+      `https://graph.facebook.com/v20.0/${whatsappbusinessaccountid}/phone_numbers`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    console.log("Phone Numbers:", phoneNumbers.data);
+    console.log("Phone Numbers testing:", phoneNumbers.data.data[0].id);
+    setPhoneNumberId(phoneNumbers.data.data[0].id);
+  };
 
-  const sendMessage = () => {};
+  const sendMessage = async () => {
+    const sendMsg = await axios.post(
+      `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to: "918552035822",
+        type: "template",
+        template: {
+          name: "hello_world",
+          language: {
+            code: "en_US",
+          },
+        },
+      },
+
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("sent message", sendMsg.data);
+  };
 
   return (
     <div>
