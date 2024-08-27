@@ -3,15 +3,10 @@ import axios from "axios";
 
 const Home = () => {
   const [user, setUser] = useState();
-  const [client_id, setClient_id] = useState("");
-  const [redirect_url, setRedirect_Url] = useState("");
-  const url =
-    "https://www.facebook.com/v15.0/dialog/oauth?client_id=" +
-    client_id +
-    "&redirect_uri=" +
-    redirect_url +
-    "&scope=whatsapp_business_management,business_management,whatsapp_business_messaging&" +
-    "response_type=code";
+
+  const redirect_url = process.env.REACT_APP_REDIRECT_URL;
+  const client_id = process.env.REACT_APP_CLIENT_ID;
+  const url = `https://www.facebook.com/v15.0/dialog/oauth?client_id=${client_id}&redirect_uri=${redirect_url}&scope=whatsapp_business_management,business_management,whatsapp_business_messaging&response_type=code`;
   useEffect(() => {
     const getMe = async () => {
       const res = await axios.get("http://localhost:8055/users/me", {
@@ -40,21 +35,7 @@ const Home = () => {
       Home
       <br />
       <form onSubmit={SubmitForm}>
-        client_id:
-        <input
-          type="text"
-          value={client_id}
-          onChange={(e) => setClient_id(e.target.value)}
-        />
-        <br />
-        redirect_url:
-        <input
-          type="text"
-          value={redirect_url}
-          onChange={(e) => setRedirect_Url(e.target.value)}
-        />
-        <br />
-        <button type="submit">submit</button>
+        <button type="submit">FACEBOOK OAUTH</button>
       </form>
     </div>
   );
