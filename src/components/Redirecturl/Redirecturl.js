@@ -24,6 +24,13 @@ const Redirecturl = () => {
   let clientSecret = process.env.REACT_APP_CLIENT_SECRET;
   const directusToken = process.env.REACT_APP_DIRECTUS_ADMINISTRATOR_TOKEN;
 
+  // Polling useEffect
+  useEffect(() => {
+    const interval = setInterval(AllCurrentChats, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(interval); // Cleanup interval on unmount
+  }, [phoneNumberId, directusToken, customerTo]);
+
   //1
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -38,23 +45,6 @@ const Redirecturl = () => {
       fetchAccessToken();
     }
   }, [code]);
-
-  //3
-  useEffect(() => {
-    if (token) {
-      getBusiness();
-    }
-  }, [token]);
-
-  // Polling useEffect
-  useEffect(() => {
-    const interval = setInterval(AllCurrentChats, 2000); // Poll every 2 seconds
-
-    return () => clearInterval(interval); // Cleanup interval on unmount
-  }, [phoneNumberId, directusToken, customerTo]);
-
-  const url = `https://graph.facebook.com/v15.0/oauth/access_token?client_id=${clientId}&redirect_uri=http://localhost:3000/redirecturl&client_secret=${clientSecret}&code=${code}`;
-
   const fetchAccessToken = async () => {
     try {
       const response = await axios.post(url);
@@ -66,6 +56,15 @@ const Redirecturl = () => {
       console.error("Error fetching access token:", error);
     }
   };
+
+  //3
+  useEffect(() => {
+    if (token) {
+      getBusiness();
+    }
+  }, [token]);
+
+  const url = `https://graph.facebook.com/v15.0/oauth/access_token?client_id=${clientId}&redirect_uri=http://localhost:3000/redirecturl&client_secret=${clientSecret}&code=${code}`;
 
   //4 => now click on any one business name in All business then =>
   const getBusiness = async () => {
@@ -83,13 +82,6 @@ const Redirecturl = () => {
     setFirstBusinessId(business.data.data[2].id);
   };
   console.log("allBusiness", allBusiness);
-
-  //7
-  useEffect(() => {
-    if (whatsappbusinessaccountid) {
-      getAllPhoneNumbersOfBusiness();
-    }
-  }, [whatsappbusinessaccountid]);
 
   //5
   const selectBusinessAndSetWhatsappBusinessId = async (oneBusinessId) => {
@@ -122,6 +114,13 @@ const Redirecturl = () => {
     setWhatsappbusinessaccountid(businessNumber.data.data[0].id);
   };
 
+  //7
+  useEffect(() => {
+    if (whatsappbusinessaccountid) {
+      getAllPhoneNumbersOfBusiness();
+    }
+  }, [whatsappbusinessaccountid]);
+
   //8
   const getAllPhoneNumbersOfBusiness = async () => {
     const phoneNumbers = await axios.get(
@@ -138,21 +137,21 @@ const Redirecturl = () => {
 
   //9 is when we click on that particular number then it setPhoneNumberId() and From() then =>
 
-  const getPhoneNumberId = async () => {
-    const phoneNumbers = await axios.get(
-      `https://graph.facebook.com/v20.0/${whatsappbusinessaccountid}/phone_numbers`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    console.log("Phone Numbers:", phoneNumbers.data.data);
-    setAllNumbersOfBusiness(phoneNumbers.data.data);
-    console.log("allnumbersofbusiness", allNumbersOfBusiness);
-    console.log("Phone Numbers testing:", phoneNumbers.data.data[0].id);
-    setPhoneNumberId(phoneNumbers.data.data[0].id);
-  };
+  // const getPhoneNumberId = async () => {
+  //   const phoneNumbers = await axios.get(
+  //     `https://graph.facebook.com/v20.0/${whatsappbusinessaccountid}/phone_numbers`,
+  //     {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     }
+  //   );
+  //   console.log("Phone Numbers:", phoneNumbers.data.data);
+  //   setAllNumbersOfBusiness(phoneNumbers.data.data);
+  //   console.log("allnumbersofbusiness", allNumbersOfBusiness);
+  //   console.log("Phone Numbers testing:", phoneNumbers.data.data[0].id);
+  //   setPhoneNumberId(phoneNumbers.data.data[0].id);
+  // };
 
   //10
   useEffect(() => {
