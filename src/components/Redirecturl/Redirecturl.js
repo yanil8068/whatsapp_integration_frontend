@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { authentication, createDirectus, realtime } from "@directus/sdk";
 import "./Redirecturl.css";
 
 const Redirecturl = () => {
@@ -25,6 +24,7 @@ const Redirecturl = () => {
   let clientSecret = process.env.REACT_APP_CLIENT_SECRET;
   const directusToken = process.env.REACT_APP_DIRECTUS_ADMINISTRATOR_TOKEN;
 
+  //1
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const retrievedCode = searchParams.get("code");
@@ -32,12 +32,14 @@ const Redirecturl = () => {
     console.log("code", retrievedCode);
   }, []);
 
+  //2
   useEffect(() => {
     if (code && !token) {
       fetchAccessToken();
     }
   }, [code]);
 
+  //3
   useEffect(() => {
     if (token) {
       getBusiness();
@@ -65,6 +67,7 @@ const Redirecturl = () => {
     }
   };
 
+  //4 => now click on any one business name in All business then =>
   const getBusiness = async () => {
     const business = await axios.get(
       "https://graph.facebook.com/v15.0/me/businesses",
@@ -81,12 +84,14 @@ const Redirecturl = () => {
   };
   console.log("allBusiness", allBusiness);
 
+  //7
   useEffect(() => {
     if (whatsappbusinessaccountid) {
       getAllPhoneNumbersOfBusiness();
     }
   }, [whatsappbusinessaccountid]);
 
+  //5
   const selectBusinessAndSetWhatsappBusinessId = async (oneBusinessId) => {
     // setFirstBusinessId(oneBusinessId);
 
@@ -102,6 +107,7 @@ const Redirecturl = () => {
     await getwhatsappBuisnessId();
   };
 
+  //6
   const getwhatsappBuisnessId = async () => {
     const businessNumber = await axios.get(
       `https://graph.facebook.com/v20.0/${firstBusinessId}/owned_whatsapp_business_accounts`,
@@ -116,6 +122,7 @@ const Redirecturl = () => {
     setWhatsappbusinessaccountid(businessNumber.data.data[0].id);
   };
 
+  //8
   const getAllPhoneNumbersOfBusiness = async () => {
     const phoneNumbers = await axios.get(
       `https://graph.facebook.com/v20.0/${whatsappbusinessaccountid}/phone_numbers`,
@@ -128,6 +135,8 @@ const Redirecturl = () => {
     console.log("Phone Numbers:", phoneNumbers.data.data);
     setAllNumbersOfBusiness(phoneNumbers.data.data);
   };
+
+  //9 is when we click on that particular number then it setPhoneNumberId() and From() then =>
 
   const getPhoneNumberId = async () => {
     const phoneNumbers = await axios.get(
@@ -145,12 +154,14 @@ const Redirecturl = () => {
     setPhoneNumberId(phoneNumbers.data.data[0].id);
   };
 
+  //10
   useEffect(() => {
     if (from) {
       getAllChats();
     }
   }, [from]);
 
+  //11
   const getAllChats = async () => {
     const allChats = await axios.get(
       `http://localhost:8055/items/MessageSentByBusiness`,
@@ -187,39 +198,10 @@ const Redirecturl = () => {
     setAllChats(uniqueChats);
   };
 
-  // const AllCurrentChats = async () => {
-  //   const response = await axios.get(
-  //     `http://localhost:8055/items/MessageSentByBusiness`,
-  //     {
-  //       params: {
-  //         filter: {
-  //           From: {
-  //             _eq: phoneNumberId,
-  //           },
-  //           contacts_id: {
-  //             _eq: to,
-  //           },
-  //         },
-  //       },
-  //       headers: {
-  //         Authorization: `Bearer ${directusToken}`,
-  //         "Content-Type": "application/json",
-  //       },
-  //     }
-  //   );
-
-  //   // Sort the chats by timestamp in ascending order (oldest first)
-  //   const sortedChats = response.data.data.sort(
-  //     (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-  //   );
-
-  //   console.log("AllCurrentChats", sortedChats);
-  //   setCurrentChats(sortedChats);
-
-  //   // console.log("AllCurrentChats", response.data.data);
-  //   // setCurrentChats(response.data.data);
-  // };
-
+  //12 on click of the button in All chats =>
+  //setTo(eachChat.contacts_id);
+  // setCustomerTo(91 + eachChat.contacts_id);
+  // 13
   const AllCurrentChats = async () => {
     console.log("cutomerTo", customerTo);
     if (customerTo && phoneNumberId) {
@@ -265,6 +247,8 @@ const Redirecturl = () => {
     }
   };
 
+  //14 we write message and send message by click on send message
+  //15
   const sendMessage = async () => {
     const sendMsg = await axios.post(
       `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
