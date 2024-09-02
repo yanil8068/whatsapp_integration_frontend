@@ -1,5 +1,9 @@
+////do business ke same number nahi ho sakte , dono business ke alag alag number honge, unke basis pe chat search kiya hai
+
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { authentication, createDirectus, realtime } from "@directus/sdk";
+import "./Redirecturl.css";
 
 const Redirecturl = () => {
   const [code, setCode] = useState();
@@ -10,15 +14,16 @@ const Redirecturl = () => {
   const [whatsappbusinessaccountid, setWhatsappbusinessaccountid] =
     useState("");
   const [to, setTo] = useState();
+  const [customerTo, setCustomerTo] = useState();
   const [from, setFrom] = useState();
   const [msg, setMsg] = useState("");
+  const [allChats, setAllChats] = useState([]);
+  const [currentChats, setCurrentChats] = useState();
 
   const [phoneNumberId, setPhoneNumberId] = useState();
   let clientId = process.env.REACT_APP_CLIENT_ID;
   let clientSecret = process.env.REACT_APP_CLIENT_SECRET;
-  // console.log("clientid", clientId);
-
-  // console.log("clientsecret", clientSecret);
+  const directusToken = process.env.REACT_APP_DIRECTUS_ADMINISTRATOR_TOKEN;
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -38,6 +43,13 @@ const Redirecturl = () => {
       getBusiness();
     }
   }, [token]);
+
+  // Polling useEffect
+  useEffect(() => {
+    const interval = setInterval(AllCurrentChats, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(interval); // Cleanup interval on unmount
+  }, [phoneNumberId, directusToken, customerTo]);
 
   const url = `https://graph.facebook.com/v15.0/oauth/access_token?client_id=${clientId}&redirect_uri=http://localhost:3000/redirecturl&client_secret=${clientSecret}&code=${code}`;
 
@@ -76,7 +88,17 @@ const Redirecturl = () => {
   }, [whatsappbusinessaccountid]);
 
   const selectBusinessAndSetWhatsappBusinessId = async (oneBusinessId) => {
-    setFirstBusinessId(oneBusinessId);
+    // setFirstBusinessId(oneBusinessId);
+
+    setWhatsappbusinessaccountid(""); // Reset whatsapp business id
+    setAllNumbersOfBusiness([]); // Clear phone numbers
+    setTo(""); // Clear recipient
+    setCustomerTo(""); // Clear customer id
+    setFrom(""); // Clear sender
+    setMsg(""); // Clear message
+    setAllChats([]); // Clear all chats
+    setCurrentChats([]); // Clear current chats
+    setPhoneNumberId(""); // Clear phone number id
     await getwhatsappBuisnessId();
   };
 
@@ -123,6 +145,126 @@ const Redirecturl = () => {
     setPhoneNumberId(phoneNumbers.data.data[0].id);
   };
 
+  useEffect(() => {
+    if (from) {
+      getAllChats();
+    }
+  }, [from]);
+
+  const getAllChats = async () => {
+    const allChats = await axios.get(
+      `http://localhost:8055/items/MessageSentByBusiness`,
+      {
+        params: {
+          filter: {
+            From: {
+              _eq: phoneNumberId,
+            },
+          },
+        },
+        headers: {
+          Authorization: `Bearer ${directusToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log("allChats", allChats.data.data);
+    setAllChats(allChats.data.data);
+    // Create a map to filter out duplicate contacts_id
+    const uniqueChats = allChats.data.data.reduce((acc, chat) => {
+      // Check if chat's contacts_id is already in the map
+      if (
+        !acc.some(
+          (existingChat) => existingChat.contacts_id === chat.contacts_id
+        )
+      ) {
+        acc.push(chat);
+      }
+      return acc;
+    }, []);
+
+    console.log("uniqueChats,", uniqueChats);
+    setAllChats(uniqueChats);
+  };
+
+  // const AllCurrentChats = async () => {
+  //   const response = await axios.get(
+  //     `http://localhost:8055/items/MessageSentByBusiness`,
+  //     {
+  //       params: {
+  //         filter: {
+  //           From: {
+  //             _eq: phoneNumberId,
+  //           },
+  //           contacts_id: {
+  //             _eq: to,
+  //           },
+  //         },
+  //       },
+  //       headers: {
+  //         Authorization: `Bearer ${directusToken}`,
+  //         "Content-Type": "application/json",
+  //       },
+  //     }
+  //   );
+
+  //   // Sort the chats by timestamp in ascending order (oldest first)
+  //   const sortedChats = response.data.data.sort(
+  //     (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+  //   );
+
+  //   console.log("AllCurrentChats", sortedChats);
+  //   setCurrentChats(sortedChats);
+
+  //   // console.log("AllCurrentChats", response.data.data);
+  //   // setCurrentChats(response.data.data);
+  // };
+
+  const AllCurrentChats = async () => {
+    console.log("cutomerTo", customerTo);
+    if (customerTo && phoneNumberId) {
+      const response = await axios.get(
+        `http://localhost:8055/items/MessageSentByBusiness`,
+        {
+          params: {
+            filter: {
+              _or: [
+                {
+                  From: {
+                    _eq: phoneNumberId,
+                  },
+                  contacts_id: {
+                    _eq: to,
+                  },
+                },
+                {
+                  From: {
+                    _eq: customerTo,
+                  },
+                  contacts_id: {
+                    _eq: phoneNumberId,
+                  },
+                },
+              ],
+            },
+          },
+          headers: {
+            Authorization: `Bearer ${directusToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Sort the chats by timestamp in ascending order (oldest first)
+      const sortedChats = response.data.data.sort(
+        (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+      );
+
+      console.log("AllCurrentChats", sortedChats);
+      setCurrentChats(sortedChats);
+    }
+  };
+
   const sendMessage = async () => {
     const sendMsg = await axios.post(
       `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
@@ -149,108 +291,176 @@ const Redirecturl = () => {
     console.log("from", fromm);
 
     const saveToDirectus = await axios.post(
-      "http://localhost:8055/items/MessagesSentByBusiness",
+      "http://localhost:8055/items/MessageSentByBusiness",
+
       {
         id: sendMsg.data.messages[0].id,
         From: phoneNumberId,
-        timestamp: "2024-08-27T10:30:00",
+        timestamp: new Date().toISOString(), // Current timestamp,
         body: `${msg}`,
         type: "text",
         status: "sent",
-        contacts_id: 1, ////make it contacts_id: `91${to}`;
+        contacts_id: Number(`${to}`), //make it contacts_id: `91${to}`;
       },
       {
-        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${directusToken}`,
+        },
       }
     );
 
-    console.log("sent message", sendMsg.data.messages[0].id);
-    console.log("saveToDirectus", saveToDirectus);
+    // Update the frontend state immediately
+    const newMessage = {
+      id: sendMsg.data.messages[0].id,
+      From: phoneNumberId,
+      timestamp: new Date().toISOString(),
+      body: `${msg}`,
+      type: "text",
+      status: "sent",
+      contacts_id: Number(`${to}`),
+    };
+
+    setCurrentChats((prevChats) => [newMessage, ...prevChats]);
+
+    // Clear the message input field
     setMsg("");
+
+    // Optionally, you can re-fetch all chats to ensure consistency
+    AllCurrentChats();
   };
 
   return (
     <div>
-      All businesses
-      <br />
-      {/* <button onClick={fetchAccessToken} disabled={!code}>
-        Fetch Access Token
-      </button> */}
-      {/* <br /> <br /> <br /> */}
-      {/* <button onClick={getBusiness}>get all businesses</button> */}
-      {/* <br /> <br /> <br /> */}
-      <ul>
-        {allBusiness ? (
-          allBusiness.map((onebusiness) => (
-            <div key={onebusiness.id}>
-              <li>
-                {onebusiness.name}
-                <button
-                  onClick={() =>
-                    selectBusinessAndSetWhatsappBusinessId(onebusiness.id)
-                  }
+      <header className="bg-success text-white text-center py-2">
+        <h1>Whatsapp Integrate</h1>
+      </header>
+      <div className="row mt-3" style={{ height: "580px" }}>
+        <div className="allbusiness col-md-2 border border-success">
+          <h5>All Businesses</h5>
+          <ul className="list-group">
+            {allBusiness ? (
+              allBusiness.map((onebusiness) => (
+                <div key={onebusiness.id}>
+                  <li className="list-group-item d-flex justify-content-between align-items-center">
+                    <button
+                      className="btn btn-secondary btn-sm btn-block w-100"
+                      onClick={() =>
+                        selectBusinessAndSetWhatsappBusinessId(onebusiness.id)
+                      }
+                    >
+                      {onebusiness.name}
+                    </button>
+                  </li>
+                </div>
+              ))
+            ) : (
+              <li className="list-group-item">No businesses found</li>
+            )}
+          </ul>
+        </div>
+        <div className="allbusinessNumbers col-md-2 border border-success">
+          <h5>all numbers of business</h5>
+          <ul className="list-group">
+            {allNumbersOfBusiness ? (
+              <>
+                {allNumbersOfBusiness.map((number) => (
+                  <li
+                    key={number.id}
+                    className="list-group-item d-flex justify-content-between align-items-center"
+                  >
+                    <button
+                      className="btn btn-secondary btn-sm btn-block w-100"
+                      onClick={() => {
+                        setPhoneNumberId(number.id);
+                        setFrom(number.display_phone_number);
+                      }}
+                    >
+                      {number.display_phone_number}
+                    </button>
+                  </li>
+                ))}
+              </>
+            ) : (
+              <></>
+            )}
+          </ul>
+        </div>
+        <div className="allChats col-md-3 border border-success ">
+          <h5>all chats</h5>
+          <ul className="list-group">
+            {allChats ? (
+              <>
+                {allChats.map((eachChat) => (
+                  <li
+                    key={eachChat.id}
+                    className="list-group-item d-flex justify-content-between align-items-center"
+                  >
+                    <button
+                      className="btn btn-secondary btn-sm btn-block w-100"
+                      onClick={() => {
+                        setTo(eachChat.contacts_id);
+                        setCustomerTo(91 + eachChat.contacts_id);
+                        AllCurrentChats();
+                      }}
+                    >
+                      {eachChat.contacts_id}
+                    </button>
+                  </li>
+                ))}
+              </>
+            ) : (
+              <></>
+            )}
+          </ul>
+        </div>
+        <div className="SingleChat col-md-5 border border-success">
+          <div className="chat-header">
+            <span className="chat-label">From:</span>
+            <span className="chat-from">{from && from}</span>
+          </div>
+          <div className="chat-input">
+            <label className="chat-label">To:</label>
+            <input
+              type="text"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="chat-to-input"
+            />
+          </div>
+          <div className="chat-messages overflow-auto h-400px p-3 border bg-light">
+            {currentChats ? (
+              currentChats.map((Chat) => (
+                <div
+                  key={Chat.id}
+                  className={`message-container ${
+                    Chat.From === phoneNumberId
+                      ? "message-from-phone"
+                      : "message-from-customer"
+                  }`}
                 >
-                  use this business
-                </button>
-              </li>
-            </div>
-          ))
-        ) : (
-          <></>
-        )}
-      </ul>
-      <br />
-      {/* <button onClick={getwhatsappBuisnessId}>
-        get whatsapp business account id
-      </button> */}
-      <br />
-      <hr />
-      <div>
-        all numbers of business
-        <br />
-      </div>
-      {allNumbersOfBusiness ? (
-        <>
-          {allNumbersOfBusiness.map((number) => (
-            <div key={number.id}>
-              {number.display_phone_number}
-              <button
-                onClick={() => {
-                  setPhoneNumberId(number.id);
-                  setFrom(number.display_phone_number);
-                }}
-              >
-                use this number
-              </button>
-            </div>
-          ))}
-        </>
-      ) : (
-        <></>
-      )}
-      {/* <button onClick={getPhoneNumberId}>get PhoneNumber id</button>
-      phone number id :{" "}
-      {phoneNumberId ? (
-        <>{phoneNumberId}</>
-      ) : (
-        <>Please set phone number id to send message</>
-      )} */}
-      <br /> <br /> <br />
-      <hr />
-      from:{from ? <>{from}</> : <></>}
-      <br />
-      {"   "} to:{" "}
-      <input type="text" value={to} onChange={(e) => setTo(e.target.value)} />
-      <br />
-      <br />
-      message:{" "}
-      <input type="text" value={msg} onChange={(e) => setMsg(e.target.value)} />
-      <br />
-      <br />
-      <button onClick={sendMessage}>sendMessage</button>
-      <div>
-        Make sure that the phone number you're trying to send a message to has
-        interacted with your WhatsApp Business number before
+                  <div className="message-bubble">{Chat.body}</div>
+                </div>
+              ))
+            ) : (
+              <div className="no-messages">No messages</div>
+            )}
+          </div>
+          <div className="chat-input">
+            <label className="chat-label">Message:</label>
+            <input
+              type="text"
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+              className="chat-msg-input w-100 mb-3"
+            />
+          </div>
+          <button
+            className="btn btn-secondary btn-sm btn-block w-100 mb-2"
+            onClick={sendMessage}
+          >
+            Send Message
+          </button>
+        </div>
       </div>
     </div>
   );

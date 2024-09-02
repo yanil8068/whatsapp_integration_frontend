@@ -1,0 +1,35 @@
+/* Add these styles to your CSS file */
+.h-400px {
+  height: 400px;
+}
+
+.message-container {
+  display: flex;
+  margin: 5px 0;
+}
+
+.message-from-phone {
+  justify-content: flex-end;
+}
+
+.message-from-customer {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  padding: 10px;
+  border-radius: 10px;
+  max-width: 60%;
+  word-wrap: break-word;
+  background-color: #f1f1f1;
+  color: #333;
+  margin: 0 10px;
+}
+
+.message-from-phone .message-bubble {
+  background-color: #dcf8c6;
+}
+
+.message-from-customer .message-bubble {
+  background-color: #f1d1d1;
+}
